@@ -1,0 +1,148 @@
+(function () {
+    'use strict';
+
+    const apiKey = "YOUR_API_KEY_HERE"; // ← あなたのGemini APIキーに置き換えてください
+    const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
+
+    function addExecuteButton() {
+        if (document.querySelector("#generateReplyButton")) return;
+
+        const button = document.createElement("button");
+        button.id = "generateReplyButton";
+        button.textContent = "口コミ返信を生成";
+        Object.assign(button.style, {
+            position: "fixed",
+            right: "20px",
+            bottom: "20px",
+            padding: "12px 20px",
+            backgroundColor: "#007bff",
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            boxShadow: "0 4px 6px rgba(0,0,0,0.1)",
+            cursor: "pointer",
+            fontSize: "14px",
+            zIndex: "1000"
+        });
+
+        const status = document.createElement("div");
+        status.id = "replyStatus";
+        Object.assign(status.style, {
+            position: "fixed",
+            right: "20px",
+            bottom: "70px",
+            backgroundColor: "#f8f9fa",
+            padding: "5px 10px",
+            borderRadius: "5px",
+            fontSize: "12px",
+            color: "#333",
+            boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+            display: "none"
+        });
+
+        document.body.appendChild(button);
+        document.body.appendChild(status);
+
+        button.addEventListener("click", generateReplyUsingAPI);
+    }
+
+    function updateStatus(message, color = "#333") {
+        const status = document.querySelector("#replyStatus");
+        if (status) {
+            status.textContent = message;
+            status.style.color = color;
+            status.style.display = "block";
+        }
+    }
+
+    function getStylistName() {
+        const th = [...document.querySelectorAll("th")].find(el => el.textContent.trim() === "スタイリスト");
+        return th?.nextElementSibling?.textContent.trim() || "（不明）";
+    }
+
+    function extractReviewData() {
+        const nickname = [...document.querySelectorAll("th")].find(el => el.textContent.trim() === "ニックネーム")
+            ?.nextElementSibling?.textContent.trim() || "なし";
+
+        const content = [...document.querySelectorAll("th")].find(el => el.textContent.trim() === "口コミ内容")
+            ?.nextElementSibling?.textContent.trim().replace(/\n/g, ' ') || "なし";
+
+        const reviewScores = {};
+        document.querySelectorAll("th:has(+ td)").forEach(th => {
+            const key = th.textContent.trim();
+            const val = th.nextElementSibling?.textContent.trim() || "なし";
+            if (["雰囲気", "技術・仕上がり", "接客サービス", "メニュー・料金", "総合満足度"].includes(key)) {
+                reviewScores[key] = val;
+            }
+        });
+
+        return {
+            nickname,
+            content,
+            scoreStr: `雰囲気: ${reviewScores["雰囲気"]}, 技術・仕上がり: ${reviewScores["技術・仕上がり"]}, 接客サービス: ${reviewScores["接客サービス"]}, メニュー・料金: ${reviewScores["メニュー・料金"]}, 総合満足度: ${reviewScores["総合満足度"]}`
+        };
+    }
+
+    function generateReplyUsingAPI() {
+        const review = extractReviewData();
+        const stylist = getStylistName();
+
+        const prompt = `あなたは美容サロンのスタッフです。お客様からの口コミに対して、カジュアルな口調で誠意を持って返信を行ってください。
+
+以下の情報を元に、口コミ返信文を作成してください。
+
+【ニックネーム】${review.nickname}
+【口コミ内容】${review.content}
+【評価】${review.scoreStr}
+
+【返信ルール】
+1. お礼を述べる
+2. 口コミの内容に共感する
+3. 褒められた点を強調する
+4. 改善点について前向きに対応を伝える
+5. 次回の来店を促す
+6. 締めの挨拶を記載
+
+出力は返信本文のみ記載してください。`;
+
+        updateStatus("生成中...", "blue");
+
+        const requestBody = {
+            contents: [{
+                parts: [{ text: prompt }]
+            }]
+        };
+
+        GM_xmlhttpRequest({
+            method: "POST",
+            url: endpoint,
+            headers: { "Content-Type": "application/json" },
+            data: JSON.stringify(requestBody),
+            onload: function (response) {
+                try {
+                    const data = JSON.parse(response.responseText);
+                    const replyText = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+
+                    if (!replyText) throw new Error("返信文の生成に失敗しました");
+
+                    const replyTextarea = document.querySelector("#replyContents");
+                    if (replyTextarea) replyTextarea.value = replyText;
+
+                    const stylistInput = document.querySelector("#replyFrom");
+                    if (stylistInput) stylistInput.value = stylist;
+
+                    updateStatus("生成完了！", "green");
+                } catch (e) {
+                    console.error("エラー:", e);
+                    updateStatus("生成失敗", "red");
+                }
+            },
+            onerror: function (err) {
+                console.error("リクエスト失敗:", err);
+                updateStatus("リクエスト失敗", "red");
+            }
+        });
+    }
+
+    addExecuteButton();
+})();
