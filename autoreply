@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const apiKey = "YOUR_API_KEY_HERE"; // ← あなたのGemini APIキーに置き換えてください
+    const apiKey = "AIzaSyDCofB7HU-vllo7b5kx6RRwo0lp5jAMdfo"; // ← あなたのGemini APIキーに置き換えてください
     const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`;
 
     function addExecuteButton() {
