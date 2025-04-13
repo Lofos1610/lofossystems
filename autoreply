@@ -87,7 +87,7 @@
         const review = extractReviewData();
         const stylist = getStylistName();
 
-        const prompt = `あなたは美容サロンのスタッフです。お客様からの口コミに対して、カジュアルな口調で誠意を持って返信を行ってください。
+        const prompt = `あなたは美容サロンのスタッフです。お客様からの口コミに対して、200文字程度で丁寧な敬語で誠意を持って返信を行ってください。
 
 以下の情報を元に、口コミ返信文を作成してください。
 
